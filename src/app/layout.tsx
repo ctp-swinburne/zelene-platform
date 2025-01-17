@@ -6,6 +6,7 @@ import { type Metadata } from "next";
 
 import { TRPCReactProvider } from "~/trpc/react";
 import { ThemeProvider } from "~/components/providers/ThemeProvider";
+import { SessionProvider } from "next-auth/react"; // Add this import
 
 export const metadata: Metadata = {
   title: "Zelene IoT",
@@ -20,7 +21,11 @@ export default function RootLayout({
     <html lang="en" className={GeistSans.variable} suppressHydrationWarning>
       <body>
         <TRPCReactProvider>
-          <ThemeProvider>{children}</ThemeProvider>
+          <SessionProvider>
+            {" "}
+            {/* Add this wrapper */}
+            <ThemeProvider>{children}</ThemeProvider>
+          </SessionProvider>
         </TRPCReactProvider>
       </body>
     </html>

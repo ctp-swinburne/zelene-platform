@@ -1,6 +1,7 @@
 // ~/app/auth/error/page.tsx
 "use client";
 
+import { Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Card,
@@ -12,8 +13,8 @@ import {
 import { Button } from "~/components/ui/button";
 import { AlertTriangle } from "lucide-react";
 
-// Changed to a proper named React component function declaration
-function ErrorPage() {
+// Separate component that uses useSearchParams
+function ErrorContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const error = searchParams.get("error");
@@ -60,5 +61,17 @@ function ErrorPage() {
   );
 }
 
-// Make sure to export the component as default
-export default ErrorPage;
+// Main component with Suspense boundary
+export default function ErrorPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center">
+          <p>Loading...</p>
+        </div>
+      }
+    >
+      <ErrorContent />
+    </Suspense>
+  );
+}

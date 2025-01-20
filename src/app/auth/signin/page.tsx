@@ -31,11 +31,11 @@ const SignIn: NextPage = () => {
       name: "GitHub",
       icon: <FaGithub className="h-5 w-5" />,
     },
-    {
-      id: "azure-ad",
-      name: "Microsoft",
-      icon: <Building2 className="h-5 w-5" />,
-    },
+    // {
+    //   id: "azure-ad",
+    //   name: "Microsoft",
+    //   icon: <Building2 className="h-5 w-5" />,
+    // },
   ];
 
   return (

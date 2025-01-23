@@ -72,7 +72,7 @@ export function Sidebar() {
         <SidebarItem icon={<Network size={20} />} title="Brokers" hasChildren>
           <div className="ml-6 mt-2 space-y-2">
             <SidebarItem icon={<Server size={20} />} title="MQTT Brokers" />
-            <SidebarItem icon={<Server size={20} />} title="Manage Brokers" />
+            <SidebarItem icon={<Server size={20} />} title="TCP Adapters" />
           </div>
         </SidebarItem>
 

@@ -1,12 +1,20 @@
 // ~/(main_layout)/layout.tsx
+
+import { redirect } from "next/navigation";
+import { auth } from "~/server/auth";
 import { Navbar } from "./_components/navbar";
 import { Sidebar } from "./_components/sidebar";
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const session = await auth();
+  if (!session?.user) {
+    redirect("/");
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />

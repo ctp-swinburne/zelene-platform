@@ -1,5 +1,8 @@
 // app/page.tsx
+
 import { type NextPage } from "next";
+import { auth } from "~/server/auth";
+import { redirect } from "next/navigation";
 import { MainNav } from "~/components/layout/MainNav";
 import { Button } from "~/components/ui/button";
 import {
@@ -12,7 +15,11 @@ import {
 import { Lightbulb, Shield } from "lucide-react";
 import Link from "next/link";
 
-const Home: NextPage = () => {
+const Home: NextPage = async () => {
+  const session = await auth();
+  if (session?.user) {
+    redirect("/home");
+  }
   return (
     <div>
       <MainNav />

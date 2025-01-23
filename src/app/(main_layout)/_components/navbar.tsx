@@ -1,4 +1,5 @@
 // ~/(main_layout)/_components/navbar.tsx
+"use client";
 import { Home, ChevronRight, Bell } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import {
@@ -9,13 +10,20 @@ import {
 } from "~/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "~/components/ui/avatar";
 import { ModeToggle } from "~/components/ui/mode-toggle";
+import { useRouter } from "next/navigation";
 
 export function Navbar() {
+  const router = useRouter();
+
+  const handleLogout = () => {
+    router.push("/auth/signout");
+  };
+
   return (
     <header className="fixed top-0 z-50 w-full border-b bg-background">
       <div className="flex h-16 items-center px-4">
         <div className="flex items-center space-x-4">
-          <span className="font-semibold">IoT Platform</span>
+          <span className="font-semibold">Zelene IoT Platform</span>
           <div className="flex items-center space-x-2 text-sm text-muted-foreground">
             <Home size={16} />
             <ChevronRight size={16} />
@@ -38,7 +46,7 @@ export function Navbar() {
             <DropdownMenuContent align="end">
               <DropdownMenuItem>Profile</DropdownMenuItem>
               <DropdownMenuItem>Settings</DropdownMenuItem>
-              <DropdownMenuItem>Logout</DropdownMenuItem>
+              <DropdownMenuItem onClick={handleLogout}>Logout</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

@@ -1,5 +1,4 @@
 // ~/(main_layout)/layout.tsx
-
 import { redirect } from "next/navigation";
 import { auth } from "~/server/auth";
 import { Navbar } from "./_components/navbar";
@@ -20,7 +19,9 @@ export default async function DashboardLayout({
       <Navbar />
       <div className="flex pt-16">
         <Sidebar />
-        <main className="ml-64 flex-1">{children}</main>
+        <main className="flex-1 p-4 transition-all duration-300 md:ml-16 lg:ml-64">
+          {children}
+        </main>
       </div>
     </div>
   );

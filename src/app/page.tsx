@@ -24,7 +24,7 @@ const Home: NextPage = () => {
             Welcome to Zelene IoT Platform
           </h1>
           <p className="mb-8 text-lg text-muted-foreground">
-            Control and monitor city lighting infrastructure with our secure IoT
+            Control and monitor your IoT infrastructure with our secure IoT
             solution. Get started by creating your account.
           </p>
           <div className="flex justify-center gap-4">
@@ -53,10 +53,10 @@ const Home: NextPage = () => {
             </CardHeader>
             <CardContent>
               <ul className="list-disc space-y-2 pl-4">
-                <li>Register with your organization email</li>
-                <li>Verify your account through the confirmation link</li>
+                <li>Register with your personal / organization email</li>
+                {/* <li>Verify your account through the confirmation link</li> */}
                 <li>Complete your profile with required details</li>
-                <li>Wait for administrator approval</li>
+                {/* <li>Wait for administrator approval</li> */}
               </ul>
             </CardContent>
           </Card>
@@ -72,7 +72,7 @@ const Home: NextPage = () => {
             <CardContent>
               <ul className="list-disc space-y-2 pl-4">
                 <li>Monitor device status in real-time</li>
-                <li>Control lighting systems remotely</li>
+                <li>Control your IoT systems remotely</li>
                 <li>Access analytics and reports</li>
                 <li>Manage device groups and settings</li>
               </ul>

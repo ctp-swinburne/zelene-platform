@@ -129,12 +129,12 @@ export function Sidebar() {
             <div className="ml-6 mt-2 space-y-2">
               <SidebarItem
                 icon={<Server size={20} />}
-                title="Device Profiles"
+                title="Device List"
                 collapsed={collapsed}
               />
               <SidebarItem
                 icon={<Layers size={20} />}
-                title="Asset Profiles"
+                title="Device Profiles"
                 collapsed={collapsed}
               />
             </div>

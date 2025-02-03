@@ -1,9 +1,10 @@
-// ~/(main_layout)/_components/sidebar.tsx
 "use client";
 
 import { useState } from "react";
 import { cn } from "~/lib/utils";
 import { Button } from "~/components/ui/button";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   Home,
   BarChart2,
@@ -23,45 +24,142 @@ import {
 } from "lucide-react";
 import { useMediaQuery } from "~/app/hooks/use-media-query";
 
-interface SidebarItemProps {
+type Route = {
+  path: string;
   icon: React.ReactNode;
   title: string;
+  children?: Route[];
+};
+
+const routes: Route[] = [
+  {
+    path: "/home",
+    icon: <Home size={20} />,
+    title: "Home",
+  },
+  {
+    path: "/dashboard",
+    icon: <Gauge size={20} />,
+    title: "Dashboards",
+  },
+  {
+    path: "/devices",
+    icon: <Box size={20} />,
+    title: "Devices",
+    children: [
+      {
+        path: "/devices",
+        icon: <Server size={20} />,
+        title: "Device List",
+      },
+      {
+        path: "/devices/profiles",
+        icon: <Layers size={20} />,
+        title: "Device Profiles",
+      },
+    ],
+  },
+  {
+    path: "/brokers",
+    icon: <Network size={20} />,
+    title: "Brokers",
+    children: [
+      {
+        path: "/brokers/mqtt",
+        icon: <Server size={20} />,
+        title: "MQTT Brokers",
+      },
+      {
+        path: "/brokers/tcp",
+        icon: <Server size={20} />,
+        title: "TCP Adapters",
+      },
+    ],
+  },
+  {
+    path: "/analytics",
+    icon: <BarChart2 size={20} />,
+    title: "Analytics",
+  },
+  {
+    path: "/alarms",
+    icon: <AlertTriangle size={20} />,
+    title: "Alarms",
+  },
+  {
+    path: "/notifications",
+    icon: <Bell size={20} />,
+    title: "Notifications",
+  },
+  {
+    path: "/users",
+    icon: <Users size={20} />,
+    title: "Users",
+  },
+  {
+    path: "/settings",
+    icon: <Settings size={20} />,
+    title: "Settings",
+  },
+];
+
+interface SidebarItemProps {
+  route: Route;
   isOpen?: boolean;
-  hasChildren?: boolean;
-  children?: React.ReactNode;
   collapsed?: boolean;
 }
 
-function SidebarItem({
-  icon,
-  title,
-  isOpen,
-  hasChildren,
-  children,
-  collapsed,
-}: SidebarItemProps) {
+function SidebarItem({ route, collapsed }: SidebarItemProps) {
   const [expanded, setExpanded] = useState(false);
+  const pathname = usePathname();
+  const isActive = pathname === route.path;
+  const hasChildren = route.children && route.children.length > 0;
 
   return (
     <div>
-      <Button
-        variant="ghost"
-        className={cn(
-          "w-full justify-start",
-          hasChildren && "justify-between",
-          collapsed && "px-2",
-        )}
-        onClick={() => hasChildren && setExpanded(!expanded)}
-      >
-        <div className="flex items-center">
-          {icon}
-          {!collapsed && <span className="ml-2">{title}</span>}
+      {hasChildren ? (
+        <Button
+          variant="ghost"
+          className={cn(
+            "w-full justify-start",
+            hasChildren && "justify-between",
+            collapsed && "px-2",
+            isActive && "bg-accent",
+          )}
+          onClick={() => setExpanded(!expanded)}
+        >
+          <div className="flex items-center">
+            {route.icon}
+            {!collapsed && <span className="ml-2">{route.title}</span>}
+          </div>
+          {hasChildren &&
+            !collapsed &&
+            (expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />)}
+        </Button>
+      ) : (
+        <Link href={route.path} passHref>
+          <Button
+            variant="ghost"
+            className={cn(
+              "w-full justify-start",
+              collapsed && "px-2",
+              isActive && "bg-accent",
+            )}
+          >
+            <div className="flex items-center">
+              {route.icon}
+              {!collapsed && <span className="ml-2">{route.title}</span>}
+            </div>
+          </Button>
+        </Link>
+      )}
+      {expanded && !collapsed && route.children && (
+        <div className="ml-6 mt-2 space-y-2">
+          {route.children.map((child) => (
+            <SidebarItem key={child.path} route={child} collapsed={collapsed} />
+          ))}
         </div>
-        {hasChildren &&
-          !collapsed &&
-          (expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />)}
-      </Button>
-      {expanded && !collapsed && children}
+      )}
     </div>
   );
 }
@@ -109,82 +207,9 @@ export function Sidebar() {
           </Button>
         </div>
         <div className="space-y-2 p-4">
-          <SidebarItem
-            icon={<Home size={20} />}
-            title="Home"
-            collapsed={collapsed}
-          />
-          <SidebarItem
-            icon={<Gauge size={20} />}
-            title="Dashboards"
-            collapsed={collapsed}
-          />
-
-          <SidebarItem
-            icon={<Box size={20} />}
-            title="Devices"
-            hasChildren
-            collapsed={collapsed}
-          >
-            <div className="ml-6 mt-2 space-y-2">
-              <SidebarItem
-                icon={<Server size={20} />}
-                title="Device List"
-                collapsed={collapsed}
-              />
-              <SidebarItem
-                icon={<Layers size={20} />}
-                title="Device Profiles"
-                collapsed={collapsed}
-              />
-            </div>
-          </SidebarItem>
-
-          <SidebarItem
-            icon={<Network size={20} />}
-            title="Brokers"
-            hasChildren
-            collapsed={collapsed}
-          >
-            <div className="ml-6 mt-2 space-y-2">
-              <SidebarItem
-                icon={<Server size={20} />}
-                title="MQTT Brokers"
-                collapsed={collapsed}
-              />
-              <SidebarItem
-                icon={<Server size={20} />}
-                title="TCP Adapters"
-                collapsed={collapsed}
-              />
-            </div>
-          </SidebarItem>
-
-          <SidebarItem
-            icon={<BarChart2 size={20} />}
-            title="Analytics"
-            collapsed={collapsed}
-          />
-          <SidebarItem
-            icon={<AlertTriangle size={20} />}
-            title="Alarms"
-            collapsed={collapsed}
-          />
-          <SidebarItem
-            icon={<Bell size={20} />}
-            title="Notifications"
-            collapsed={collapsed}
-          />
-          <SidebarItem
-            icon={<Users size={20} />}
-            title="Users"
-            collapsed={collapsed}
-          />
-          <SidebarItem
-            icon={<Settings size={20} />}
-            title="Settings"
-            collapsed={collapsed}
-          />
+          {routes.map((route) => (
+            <SidebarItem key={route.path} route={route} collapsed={collapsed} />
+          ))}
         </div>
       </div>
 

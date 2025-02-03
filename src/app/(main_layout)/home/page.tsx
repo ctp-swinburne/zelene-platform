@@ -1,3 +1,4 @@
+"use client";
 // ~/(main_layout)/home/page.tsx
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
@@ -24,7 +25,7 @@ export default function Home() {
       title: "Connect Your First Device",
       description: "Set up and connect an IoT device to start monitoring",
       icon: Box,
-      href: "/devices/new",
+      href: "/devices/first",
     },
     {
       title: "Configure MQTT Broker",

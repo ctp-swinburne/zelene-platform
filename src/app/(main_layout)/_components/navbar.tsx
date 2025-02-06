@@ -8,19 +8,56 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback } from "~/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import { ModeToggle } from "~/components/ui/mode-toggle";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Sheet, SheetContent, SheetTrigger } from "~/components/ui/sheet";
+import { useSession } from "next-auth/react";
+
+// Helper function to generate gradient colors based on name
+const generateGradientColors = (name: string) => {
+  const stringToHslColor = (
+    str: string,
+    saturation: number,
+    lightness: number,
+  ) => {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const hue = hash % 360;
+    return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+  };
+
+  const color1 = stringToHslColor(name, 70, 60);
+  const color2 = stringToHslColor(name + name, 70, 60);
+
+  return { color1, color2 };
+};
 
 export function Navbar() {
   const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { data: session } = useSession();
 
   const handleLogout = () => {
     router.push("/auth/signout");
   };
+
+  // Generate user initials and gradient colors
+  const userInitials = session?.user?.name
+    ? session.user.name
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2)
+    : "??";
+
+  const { color1, color2 } = generateGradientColors(
+    session?.user?.name ?? "User",
+  );
 
   const NavItems = () => (
     <>
@@ -44,7 +81,15 @@ export function Navbar() {
       <DropdownMenu>
         <DropdownMenuTrigger>
           <Avatar>
-            <AvatarFallback>TD</AvatarFallback>
+            <AvatarImage src={session?.user?.image ?? undefined} />
+            <AvatarFallback
+              style={{
+                background: `linear-gradient(135deg, ${color1}, ${color2})`,
+                color: "white",
+              }}
+            >
+              {userInitials}
+            </AvatarFallback>
           </Avatar>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">

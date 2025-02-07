@@ -88,8 +88,9 @@ model DeviceProfile {
     devices Device[]
     user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-    @@unique([userId, isDefault])
+    // Only create a unique constraint when isDefault is true
     @@index([userId])
+    @@index([userId, isDefault])
 }
 
 enum DeviceStatus {

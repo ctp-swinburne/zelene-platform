@@ -16,6 +16,7 @@ import type { CreateDeviceInput } from "~/schema/device";
 export default function FirstDevicePage() {
   const router = useRouter();
   const { toast } = useToast();
+  const utils = api.useUtils();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<CreateDeviceInput>({
     name: "",
@@ -29,13 +30,14 @@ export default function FirstDevicePage() {
 
   // Setup create device mutation
   const createDevice = api.device.create.useMutation({
-    onSuccess: () => {
+    onSuccess: async () => {
       toast({
         title: "Success",
         description: "Device created successfully",
       });
+      // Invalidate the devices query before navigating
+      await utils.device.getAll.invalidate();
       router.push("/devices");
-      router.refresh();
     },
     onError: (error) => {
       toast({
@@ -69,7 +71,6 @@ export default function FirstDevicePage() {
         profileId: defaultProfile.id,
       });
     } catch (error) {
-      // Error handling is done in onError callback
       console.error("Error creating device:", error);
     }
   };

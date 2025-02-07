@@ -30,6 +30,7 @@ import type { CreateDeviceInput } from "~/schema/device";
 export default function NewDevicePage() {
   const router = useRouter();
   const { toast } = useToast();
+  const utils = api.useUtils();
   const [formData, setFormData] = useState<CreateDeviceInput>({
     name: "",
     deviceId: "",
@@ -42,13 +43,14 @@ export default function NewDevicePage() {
 
   // Setup mutation
   const createDevice = api.device.create.useMutation({
-    onSuccess: () => {
+    onSuccess: async () => {
       toast({
         title: "Success",
         description: "Device created successfully",
       });
+      // Invalidate the devices query before navigating
+      await utils.device.getAll.invalidate();
       router.push("/devices");
-      router.refresh();
     },
     onError: (error) => {
       toast({
@@ -67,11 +69,9 @@ export default function NewDevicePage() {
     try {
       await createDevice.mutateAsync(formData);
     } catch (error) {
-      // Error handling is done in onError callback
       console.error("Error creating device:", error);
     }
   };
-
   return (
     <div className="flex-1 space-y-6">
       <div className="flex items-center gap-4 border-b pb-4">

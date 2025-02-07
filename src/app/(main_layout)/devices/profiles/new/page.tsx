@@ -22,23 +22,26 @@ import type { CreateProfileInput } from "~/schema/deviceProfile";
 export default function DeviceProfileCreation() {
   const router = useRouter();
   const { toast } = useToast();
+  const utils = api.useUtils();
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Explicitly set all fields including isDefault
   const [formData, setFormData] = useState<CreateProfileInput>({
     name: "",
     description: "",
-    transport: "MQTT",
+    transport: "MQTT" as const,
     isDefault: false,
   });
 
   // Setup mutation
   const createProfile = api.deviceProfile.create.useMutation({
-    onSuccess: () => {
+    onSuccess: async () => {
       toast({
         title: "Success",
         description: "Device profile created successfully",
       });
+      await utils.deviceProfile.getAll.invalidate();
       router.push("/devices/profiles");
-      router.refresh();
     },
     onError: (error) => {
       toast({
@@ -55,9 +58,16 @@ export default function DeviceProfileCreation() {
     setIsSubmitting(true);
 
     try {
-      await createProfile.mutateAsync(formData);
+      // Ensure we're sending the correct data structure
+      const profileData: CreateProfileInput = {
+        name: formData.name,
+        description: formData.description ?? "",
+        transport: formData.transport,
+        isDefault: Boolean(formData.isDefault), // Ensure boolean type
+      };
+
+      await createProfile.mutateAsync(profileData);
     } catch (error) {
-      // Error handling is done in onError callback
       console.error("Error creating device profile:", error);
     }
   };

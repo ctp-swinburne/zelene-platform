@@ -1,7 +1,9 @@
+// src/app/(main_layout)/devices/profile/page.tsx
 "use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import {
@@ -27,42 +29,46 @@ import {
   TableHeader,
   TableRow,
 } from "~/components/ui/table";
+import { useToast } from "~/hooks/use-toast";
 import type { RouterOutputs } from "~/trpc/react";
 
-type DeviceProfile = {
-  id: string;
-  name: string;
-  description: string;
-  transport: "mqtt" | "tcp";
-  createdAt: string;
-  devicesCount: number;
-};
-
+type DeviceProfile = RouterOutputs["deviceProfile"]["getAll"][0];
 type ViewMode = "grid" | "list";
 
 export default function DeviceProfilesPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
 
-  // Temporary mock data - replace with actual API call
-  const [profiles] = useState<DeviceProfile[]>([
-    {
-      id: "profile-1",
-      name: "Temperature Sensor Profile",
-      description: "Profile for temperature monitoring sensors",
-      transport: "mqtt",
-      createdAt: "2024-02-03T15:30:00",
-      devicesCount: 12,
+  // Fetch profiles using tRPC
+  const { data: profiles, refetch } = api.deviceProfile.getAll.useQuery();
+
+  // Delete mutation
+  const deleteProfile = api.deviceProfile.delete.useMutation({
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Profile deleted successfully",
+      });
+      void refetch();
     },
-    {
-      id: "profile-2",
-      name: "Gateway Profile",
-      description: "Profile for edge gateways",
-      transport: "tcp",
-      createdAt: "2024-02-03T15:30:00",
-      devicesCount: 5,
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
     },
-  ]);
+  });
+
+  const handleDeleteProfile = async (profileId: string) => {
+    try {
+      await deleteProfile.mutateAsync(profileId);
+    } catch (error) {
+      // Error handling is done in onError callback
+      console.error("Error deleting profile:", error);
+    }
+  };
 
   const ProfileActions = ({ profile }: { profile: DeviceProfile }) => (
     <DropdownMenu>
@@ -78,7 +84,11 @@ export default function DeviceProfilesPage() {
           <Settings2 className="mr-2 h-4 w-4" />
           Edit Profile
         </DropdownMenuItem>
-        <DropdownMenuItem className="text-destructive">
+        <DropdownMenuItem
+          onClick={() => handleDeleteProfile(profile.id)}
+          className="text-destructive"
+          disabled={profile.devices.length > 0}
+        >
           Delete Profile
         </DropdownMenuItem>
       </DropdownMenuContent>
@@ -94,7 +104,7 @@ export default function DeviceProfilesPage() {
 
   const GridView = () => (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-      {profiles.map((profile) => (
+      {profiles?.map((profile) => (
         <Card key={profile.id} className="relative">
           <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
@@ -114,8 +124,8 @@ export default function DeviceProfilesPage() {
             <div className="flex items-center justify-between">
               <TransportBadge type={profile.transport} />
               <span className="text-sm">
-                {profile.devicesCount}{" "}
-                {profile.devicesCount === 1 ? "device" : "devices"}
+                {profile.devices.length}{" "}
+                {profile.devices.length === 1 ? "device" : "devices"}
               </span>
             </div>
             <div className="text-xs text-muted-foreground">
@@ -141,7 +151,7 @@ export default function DeviceProfilesPage() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {profiles.map((profile) => (
+          {profiles?.map((profile) => (
             <TableRow key={profile.id}>
               <TableCell className="font-medium">
                 <div className="flex items-center space-x-2">
@@ -155,7 +165,7 @@ export default function DeviceProfilesPage() {
               <TableCell>
                 <TransportBadge type={profile.transport} />
               </TableCell>
-              <TableCell>{profile.devicesCount}</TableCell>
+              <TableCell>{profile.devices.length}</TableCell>
               <TableCell className="text-muted-foreground">
                 {new Date(profile.createdAt).toLocaleDateString()}
               </TableCell>
@@ -200,7 +210,7 @@ export default function DeviceProfilesPage() {
           </p>
         </div>
         <div className="flex items-center space-x-2">
-          {profiles.length > 0 && (
+          {profiles && profiles.length > 0 && (
             <>
               <div className="rounded-md border p-1">
                 <Button
@@ -229,7 +239,7 @@ export default function DeviceProfilesPage() {
         </div>
       </div>
 
-      {profiles.length === 0 ? (
+      {!profiles?.length ? (
         <EmptyState />
       ) : viewMode === "grid" ? (
         <GridView />

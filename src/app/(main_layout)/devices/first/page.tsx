@@ -1,7 +1,7 @@
 // app/(main_layout)/devices/first/page.tsx
 "use client";
 
-import { useState, type ChangeEvent } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "~/trpc/react";
 import type { RouterOutputs } from "~/trpc/react";
@@ -9,17 +9,69 @@ import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
+import { useToast } from "~/hooks/use-toast";
 import { MonitorSmartphone, ArrowRight, ChevronLeft } from "lucide-react";
+import type { CreateDeviceInput } from "~/schema/device";
 
 export default function FirstDevicePage() {
   const router = useRouter();
-  const [deviceName, setDeviceName] = useState<string>("");
-  const [deviceId, setDeviceId] = useState<string>("");
+  const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formData, setFormData] = useState<CreateDeviceInput>({
+    name: "",
+    deviceId: "",
+  });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Fetch default profile
+  const { data: profiles } = api.deviceProfile.getAll.useQuery(undefined, {
+    select: (data) => data.filter((profile) => profile.isDefault),
+  });
+
+  // Setup create device mutation
+  const createDevice = api.device.create.useMutation({
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Device created successfully",
+      });
+      router.push("/devices");
+      router.refresh();
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+      setIsSubmitting(false);
+    },
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Add your device creation logic here
-    router.push("/devices");
+    setIsSubmitting(true);
+
+    const defaultProfile = profiles?.[0];
+    if (!defaultProfile) {
+      toast({
+        title: "Error",
+        description:
+          "No default profile found. Please contact system administrator.",
+        variant: "destructive",
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
+    try {
+      await createDevice.mutateAsync({
+        ...formData,
+        profileId: defaultProfile.id,
+      });
+    } catch (error) {
+      // Error handling is done in onError callback
+      console.error("Error creating device:", error);
+    }
   };
 
   return (
@@ -52,10 +104,11 @@ export default function FirstDevicePage() {
                 <Input
                   id="deviceName"
                   placeholder="Enter device name"
-                  value={deviceName}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                    setDeviceName(e.target.value)
+                  value={formData.name}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, name: e.target.value }))
                   }
+                  required
                 />
               </div>
 
@@ -64,17 +117,31 @@ export default function FirstDevicePage() {
                 <Input
                   id="deviceId"
                   placeholder="Enter unique device identifier"
-                  value={deviceId}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                    setDeviceId(e.target.value)
+                  value={formData.deviceId}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      deviceId: e.target.value,
+                    }))
                   }
+                  required
                 />
               </div>
 
               <div className="pt-4">
-                <Button type="submit" className="w-full">
-                  Create Device
-                  <ArrowRight className="ml-2 h-4 w-4" />
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    "Creating..."
+                  ) : (
+                    <>
+                      Create Device
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </>
+                  )}
                 </Button>
               </div>
             </div>
@@ -84,7 +151,12 @@ export default function FirstDevicePage() {
             <h3 className="mb-2 font-medium">Next Steps:</h3>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>1. Configure your device with the provided credentials</li>
-              <li>2. Start monitoring your device data</li>
+              <li>2. Connect your device using the following details:</li>
+              <div className="mt-2 space-y-1 rounded-md bg-background p-3 font-mono text-xs">
+                <div>Broker: mqtt.zelene.local</div>
+                <div>Port: 1883</div>
+                <div>Username: device_{formData.deviceId || "<device_id>"}</div>
+              </div>
             </ul>
           </div>
         </CardContent>

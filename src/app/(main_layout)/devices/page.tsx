@@ -1,7 +1,9 @@
+// src/app/(main_layout)/devices/page.tsx
 "use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import {
@@ -26,35 +28,46 @@ import {
   TableHeader,
   TableRow,
 } from "~/components/ui/table";
+import { useToast } from "~/hooks/use-toast";
 import type { RouterOutputs } from "~/trpc/react";
 
-type Device = {
-  id: string;
-  name: string;
-  status: "online" | "offline";
-  type: string;
-  lastSeen: string;
-  dataPoints: number;
-};
-
+type Device = RouterOutputs["device"]["getAll"][0];
 type ViewMode = "grid" | "list";
 
 export default function DevicesPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
 
-  // Temporary state to demonstrate empty/filled states
-  const [devices] = useState<Device[]>([
-    {
-      id: "esp32-01",
-      name: "Temperature Sensor A1",
-      status: "online",
-      type: "ESP32",
-      lastSeen: "2024-02-03T15:30:00",
-      dataPoints: 1234,
+  // Fetch devices using tRPC
+  const { data: devices, refetch } = api.device.getAll.useQuery();
+
+  // Delete mutation
+  const deleteDevice = api.device.delete.useMutation({
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Device deleted successfully",
+      });
+      void refetch();
     },
-    // ... other devices
-  ]);
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleDeleteDevice = async (deviceId: string) => {
+    try {
+      await deleteDevice.mutateAsync(deviceId);
+    } catch (error) {
+      // Error handling is done in onError callback
+      console.error("Error deleting device:", error);
+    }
+  };
 
   const DeviceActions = ({ device }: { device: Device }) => (
     <DropdownMenu>
@@ -64,11 +77,16 @@ export default function DevicesPage() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={() => router.push(`/devices/${device.id}/settings`)}
+        >
           <Settings2 className="mr-2 h-4 w-4" />
           Settings
         </DropdownMenuItem>
-        <DropdownMenuItem className="text-destructive">
+        <DropdownMenuItem
+          onClick={() => handleDeleteDevice(device.id)}
+          className="text-destructive"
+        >
           Delete Device
         </DropdownMenuItem>
       </DropdownMenuContent>
@@ -79,16 +97,18 @@ export default function DevicesPage() {
     <div className="flex items-center space-x-2">
       <div
         className={`h-2 w-2 rounded-full ${
-          status === "online" ? "bg-green-500" : "bg-red-500"
+          status === "ONLINE" ? "bg-green-500" : "bg-red-500"
         }`}
       />
-      <span className="text-sm capitalize text-muted-foreground">{status}</span>
+      <span className="text-sm capitalize text-muted-foreground">
+        {status.toLowerCase()}
+      </span>
     </div>
   );
 
   const GridView = () => (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-      {devices.map((device) => (
+      {devices?.map((device) => (
         <Card key={device.id} className="relative">
           <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
@@ -105,18 +125,18 @@ export default function DevicesPage() {
             <div className="flex items-center justify-between">
               <StatusIndicator status={device.status} />
               <span className="text-xs text-muted-foreground">
-                {device.type}
+                {device.profile?.name ?? "No Profile"}
               </span>
             </div>
             <div className="flex items-center justify-between text-sm">
               <div className="flex items-center space-x-2">
-                <span className="text-muted-foreground">Data Points:</span>
-                <span className="font-medium">
-                  {device.dataPoints.toLocaleString()}
-                </span>
+                <span className="text-muted-foreground">Device ID:</span>
+                <span className="font-mono text-xs">{device.deviceId}</span>
               </div>
               <div className="text-xs text-muted-foreground">
-                Last seen: {new Date(device.lastSeen).toLocaleTimeString()}
+                {device.lastSeen
+                  ? `Last seen: ${new Date(device.lastSeen).toLocaleTimeString()}`
+                  : "Never connected"}
               </div>
             </div>
           </CardContent>
@@ -132,14 +152,14 @@ export default function DevicesPage() {
           <TableRow>
             <TableHead>Name</TableHead>
             <TableHead>Status</TableHead>
-            <TableHead>Type</TableHead>
-            <TableHead>Data Points</TableHead>
+            <TableHead>Profile</TableHead>
+            <TableHead>Device ID</TableHead>
             <TableHead>Last Seen</TableHead>
             <TableHead className="w-[50px]"></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {devices.map((device) => (
+          {devices?.map((device) => (
             <TableRow key={device.id}>
               <TableCell className="font-medium">
                 <div className="flex items-center space-x-2">
@@ -150,10 +170,14 @@ export default function DevicesPage() {
               <TableCell>
                 <StatusIndicator status={device.status} />
               </TableCell>
-              <TableCell>{device.type}</TableCell>
-              <TableCell>{device.dataPoints.toLocaleString()}</TableCell>
+              <TableCell>{device.profile?.name ?? "No Profile"}</TableCell>
+              <TableCell className="font-mono text-xs">
+                {device.deviceId}
+              </TableCell>
               <TableCell className="text-muted-foreground">
-                {new Date(device.lastSeen).toLocaleTimeString()}
+                {device.lastSeen
+                  ? new Date(device.lastSeen).toLocaleTimeString()
+                  : "Never connected"}
               </TableCell>
               <TableCell>
                 <DeviceActions device={device} />
@@ -194,7 +218,7 @@ export default function DevicesPage() {
           </p>
         </div>
         <div className="flex items-center space-x-2">
-          {devices.length > 0 && (
+          {devices && devices.length > 0 && (
             <>
               <div className="rounded-md border p-1">
                 <Button
@@ -223,7 +247,7 @@ export default function DevicesPage() {
         </div>
       </div>
 
-      {devices.length === 0 ? (
+      {!devices?.length ? (
         <EmptyState />
       ) : viewMode === "grid" ? (
         <GridView />

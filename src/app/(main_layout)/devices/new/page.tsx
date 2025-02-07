@@ -1,11 +1,14 @@
 // app/(dashboard)/devices/new/page.tsx
 "use client";
 
-import { useState, type ChangeEvent } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { type RouterOutputs } from "~/trpc/react";
+import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
+import { useToast } from "~/hooks/use-toast";
 import {
   Card,
   CardContent,
@@ -22,19 +25,53 @@ import {
   SelectValue,
 } from "~/components/ui/select";
 import { ChevronLeft, Plus } from "lucide-react";
+import type { CreateDeviceInput } from "~/schema/device";
 
 export default function NewDevicePage() {
   const router = useRouter();
-  const [deviceName, setDeviceName] = useState<string>("");
-  const [deviceId, setDeviceId] = useState<string>("");
-  const [deviceType, setDeviceType] = useState<string>("");
+  const { toast } = useToast();
+  const utils = api.useUtils();
+  const [formData, setFormData] = useState<CreateDeviceInput>({
+    name: "",
+    deviceId: "",
+    profileId: undefined,
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Fetch device profiles for the select dropdown
+  const { data: profiles } = api.deviceProfile.getAll.useQuery();
+
+  // Setup mutation
+  const createDevice = api.device.create.useMutation({
+    onSuccess: async () => {
+      toast({
+        title: "Success",
+        description: "Device created successfully",
+      });
+      // Invalidate the devices query before navigating
+      await utils.device.getAll.invalidate();
+      router.push("/devices");
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+      setIsSubmitting(false);
+    },
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Add device creation logic here
-    router.push("/devices");
-  };
+    setIsSubmitting(true);
 
+    try {
+      await createDevice.mutateAsync(formData);
+    } catch (error) {
+      console.error("Error creating device:", error);
+    }
+  };
   return (
     <div className="flex-1 space-y-6">
       <div className="flex items-center gap-4 border-b pb-4">
@@ -49,6 +86,7 @@ export default function NewDevicePage() {
           </p>
         </div>
       </div>
+
       <div className="grid max-w-3xl grid-cols-1 gap-6">
         <form onSubmit={handleSubmit}>
           <Card>
@@ -64,10 +102,11 @@ export default function NewDevicePage() {
                 <Input
                   id="deviceName"
                   placeholder="e.g., Temperature Sensor A1"
-                  value={deviceName}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                    setDeviceName(e.target.value)
+                  value={formData.name}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, name: e.target.value }))
                   }
+                  required
                 />
               </div>
 
@@ -76,36 +115,55 @@ export default function NewDevicePage() {
                 <Input
                   id="deviceId"
                   placeholder="Enter unique device identifier"
-                  value={deviceId}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                    setDeviceId(e.target.value)
+                  value={formData.deviceId}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      deviceId: e.target.value,
+                    }))
                   }
+                  required
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="deviceType">Device Type</Label>
-                <Select value={deviceType} onValueChange={setDeviceType}>
-                  <SelectTrigger id="deviceType">
-                    <SelectValue placeholder="Select device type" />
+                <Label htmlFor="profileId">Device Profile</Label>
+                <Select
+                  value={formData.profileId}
+                  onValueChange={(value) =>
+                    setFormData((prev) => ({ ...prev, profileId: value }))
+                  }
+                >
+                  <SelectTrigger id="profileId">
+                    <SelectValue placeholder="Select a device profile" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="esp32">ESP32</SelectItem>
-                    <SelectItem value="esp8266">ESP8266</SelectItem>
-                    <SelectItem value="raspberry-pi">Raspberry Pi</SelectItem>
-                    <SelectItem value="arduino">Arduino</SelectItem>
-                    <SelectItem value="custom">Custom</SelectItem>
+                    {profiles?.map((profile) => (
+                      <SelectItem key={profile.id} value={profile.id}>
+                        {profile.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
             </CardContent>
             <CardFooter className="flex justify-between">
-              <Button variant="outline" onClick={() => router.push("/devices")}>
+              <Button
+                variant="outline"
+                onClick={() => router.push("/devices")}
+                type="button"
+              >
                 Cancel
               </Button>
-              <Button type="submit">
-                <Plus className="mr-2 h-4 w-4" />
-                Add Device
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? (
+                  "Creating..."
+                ) : (
+                  <>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Device
+                  </>
+                )}
               </Button>
             </CardFooter>
           </Card>
@@ -127,7 +185,7 @@ export default function NewDevicePage() {
                 <div className="font-mono">1883</div>
                 <div className="text-muted-foreground">Username:</div>
                 <div className="font-mono">
-                  device_{deviceId || "<device_id>"}
+                  device_{formData.deviceId || "<device_id>"}
                 </div>
               </div>
             </div>

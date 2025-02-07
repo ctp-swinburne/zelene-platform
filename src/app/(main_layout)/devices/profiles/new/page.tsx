@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { api } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
+import { useToast } from "~/hooks/use-toast";
 import { ArrowLeft, Settings2 } from "lucide-react";
 import {
   Select,
@@ -14,39 +16,57 @@ import {
   SelectValue,
 } from "~/components/ui/select";
 import { Textarea } from "~/components/ui/textarea";
-
-type TransportType = "mqtt" | "tcp";
+import { Switch } from "~/components/ui/switch";
+import type { CreateProfileInput } from "~/schema/deviceProfile";
 
 export default function DeviceProfileCreation() {
   const router = useRouter();
-  const [formData, setFormData] = useState({
+  const { toast } = useToast();
+  const utils = api.useUtils();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Explicitly set all fields including isDefault
+  const [formData, setFormData] = useState<CreateProfileInput>({
     name: "",
     description: "",
-    transport: "" as TransportType,
+    transport: "MQTT" as const,
+    isDefault: false,
   });
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
-  ) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
-
-  const handleTransportChange = (value: TransportType) => {
-    setFormData((prev) => ({
-      ...prev,
-      transport: value,
-    }));
-  };
+  // Setup mutation
+  const createProfile = api.deviceProfile.create.useMutation({
+    onSuccess: async () => {
+      toast({
+        title: "Success",
+        description: "Device profile created successfully",
+      });
+      await utils.deviceProfile.getAll.invalidate();
+      router.push("/devices/profiles");
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+      setIsSubmitting(false);
+    },
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
+
     try {
-      // API call would go here
-      router.push("/devices/profiles");
+      // Ensure we're sending the correct data structure
+      const profileData: CreateProfileInput = {
+        name: formData.name,
+        description: formData.description ?? "",
+        transport: formData.transport,
+        isDefault: Boolean(formData.isDefault), // Ensure boolean type
+      };
+
+      await createProfile.mutateAsync(profileData);
     } catch (error) {
       console.error("Error creating device profile:", error);
     }
@@ -89,7 +109,9 @@ export default function DeviceProfileCreation() {
                   name="name"
                   placeholder="e.g., Temperature Sensor Profile"
                   value={formData.name}
-                  onChange={handleChange}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, name: e.target.value }))
+                  }
                   required
                 />
                 <p className="text-sm text-muted-foreground">
@@ -102,8 +124,13 @@ export default function DeviceProfileCreation() {
                 <Textarea
                   name="description"
                   placeholder="e.g., Profile for temperature monitoring sensors"
-                  value={formData.description}
-                  onChange={handleChange}
+                  value={formData.description ?? ""}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      description: e.target.value,
+                    }))
+                  }
                   className="h-20"
                 />
                 <p className="text-sm text-muted-foreground">
@@ -115,22 +142,37 @@ export default function DeviceProfileCreation() {
                 <label className="text-sm font-medium">Transport Type</label>
                 <Select
                   value={formData.transport}
-                  onValueChange={handleTransportChange}
+                  onValueChange={(value: "MQTT" | "TCP") =>
+                    setFormData((prev) => ({ ...prev, transport: value }))
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select transport type" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="mqtt">MQTT</SelectItem>
-                    <SelectItem value="tcp">TCP</SelectItem>
+                    <SelectItem value="MQTT">MQTT</SelectItem>
+                    <SelectItem value="TCP">TCP</SelectItem>
                   </SelectContent>
                 </Select>
-                <div className="flex gap-1 text-sm text-muted-foreground">
-                  <span>
-                    Select the communication protocol for devices using this
-                    profile
-                  </span>
+                <p className="text-sm text-muted-foreground">
+                  Select the communication protocol for devices using this
+                  profile
+                </p>
+              </div>
+
+              <div className="flex items-center justify-between space-x-2">
+                <div className="space-y-0.5">
+                  <label className="text-sm font-medium">Set as Default</label>
+                  <p className="text-sm text-muted-foreground">
+                    Make this the default profile for new devices
+                  </p>
                 </div>
+                <Switch
+                  checked={formData.isDefault}
+                  onCheckedChange={(checked: boolean) =>
+                    setFormData((prev) => ({ ...prev, isDefault: checked }))
+                  }
+                />
               </div>
             </div>
 
@@ -142,7 +184,9 @@ export default function DeviceProfileCreation() {
               >
                 Cancel
               </Button>
-              <Button type="submit">Create Profile</Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? "Creating..." : "Create Profile"}
+              </Button>
             </div>
           </form>
         </CardContent>

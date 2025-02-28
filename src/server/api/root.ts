@@ -1,4 +1,5 @@
 import { deviceRouter } from "./routers/device/device";
+import { brokerRouter } from "./routers/brokers/broker";
 import { deviceProfileRouter } from "./routers/device/deviceProfile";
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 
@@ -10,6 +11,7 @@ import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 export const appRouter = createTRPCRouter({
   device: deviceRouter,
   deviceProfile: deviceProfileRouter,
+  broker: brokerRouter,
 });
 
 // export type definition of API

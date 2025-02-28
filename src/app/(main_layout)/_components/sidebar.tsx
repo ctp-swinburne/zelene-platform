@@ -65,9 +65,9 @@ const routes: Route[] = [
     title: "Brokers",
     children: [
       {
-        path: "/brokers/mqtt",
+        path: "/brokers/emqx",
         icon: <Server size={20} />,
-        title: "MQTT Brokers",
+        title: "EMQX Brokers",
       },
       {
         path: "/brokers/tcp",

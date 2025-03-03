@@ -69,7 +69,7 @@ export default function Home() {
     <div className="space-y-6 p-6 pb-16">
       <div className="space-y-4">
         <h1 className="text-3xl font-bold tracking-tight">
-          Welcome to IoT Platform
+          Welcome to Zelene IoT Platform
         </h1>
         <p className="text-muted-foreground">
           Get started by connecting your devices and creating dashboards to

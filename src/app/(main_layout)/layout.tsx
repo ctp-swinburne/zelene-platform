@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { auth } from "~/server/auth";
 import { Navbar } from "./_components/navbar";
 import { Sidebar } from "./_components/sidebar";
+import { Toaster } from "~/components/ui/toaster";
 
 export default async function DashboardLayout({
   children,
@@ -23,6 +24,7 @@ export default async function DashboardLayout({
           {children}
         </main>
       </div>
+      <Toaster />
     </div>
   );
 }

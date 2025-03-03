@@ -46,6 +46,7 @@ model User {
     sessions       Session[]
     devices        Device[]
     deviceProfiles DeviceProfile[]
+    brokers        Broker[] // New relation
 }
 
 model VerificationToken {
@@ -67,12 +68,15 @@ model Device {
     profileId String?
     userId    String
     lastSeen  DateTime?
+    brokerId  String? // New field to associate devices with brokers
 
     profile DeviceProfile? @relation(fields: [profileId], references: [id])
     user    User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+    broker  Broker?        @relation(fields: [brokerId], references: [id])
 
     @@index([profileId])
     @@index([userId])
+    @@index([brokerId])
 }
 
 model DeviceProfile {
@@ -103,4 +107,75 @@ enum DeviceStatus {
 enum TransportType {
     MQTT
     TCP
+}
+
+// New enum for broker node type
+enum BrokerNodeType {
+    SINGLE
+    CLUSTER
+}
+
+// New enum for broker authentication type
+enum BrokerAuthType {
+    BUILT_IN
+    MYSQL
+    POSTGRES
+    MONGODB
+    JWT
+}
+
+// New model for MQTT Broker
+model Broker {
+    id        String         @id @default(cuid())
+    createdAt DateTime       @default(now())
+    updatedAt DateTime       @updatedAt
+    name      String
+    nodeType  BrokerNodeType @default(SINGLE)
+    userId    String
+
+    // Protocol settings
+    mqttEnabled Boolean @default(true)
+    wsEnabled   Boolean @default(true)
+    sslEnabled  Boolean @default(false)
+    wssEnabled  Boolean @default(false)
+
+    // Auth settings
+    authType BrokerAuthType @default(BUILT_IN)
+
+    // Built-in auth
+    authUsername String?
+    authPassword String?
+
+    // Database auth
+    dbHost     String?
+    dbPort     Int?
+    dbName     String?
+    dbUsername String?
+    dbPassword String?
+
+    // JWT auth
+    jwtSecret    String?
+    jwtAlgorithm String?
+
+    // Advanced settings
+    maxConnections Int     @default(1000000)
+    keepAlive      Int     @default(300)
+    enableAcl      Boolean @default(false)
+    enableMetrics  Boolean @default(false)
+
+    // Status
+    status BrokerStatus @default(STOPPED)
+
+    // Relations
+    user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+    devices Device[]
+
+    @@index([userId])
+}
+
+// New enum for broker status
+enum BrokerStatus {
+    RUNNING
+    STOPPED
+    ERROR
 }

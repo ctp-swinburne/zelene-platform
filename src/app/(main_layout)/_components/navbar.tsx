@@ -10,10 +10,11 @@ import {
 } from "~/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import { ModeToggle } from "~/components/ui/mode-toggle";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 import { Sheet, SheetContent, SheetTrigger } from "~/components/ui/sheet";
 import { useSession } from "next-auth/react";
+import Link from "next/link";
 
 // Helper function to generate gradient colors based on name
 const generateGradientColors = (name: string) => {
@@ -36,10 +37,45 @@ const generateGradientColors = (name: string) => {
   return { color1, color2 };
 };
 
+// Type definition for breadcrumb items
+type BreadcrumbItem = {
+  label: string;
+  path: string;
+};
+
 export function Navbar() {
   const router = useRouter();
+  const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { data: session } = useSession();
+  const [breadcrumbs, setBreadcrumbs] = useState<BreadcrumbItem[]>([]);
+
+  // Generate breadcrumbs based on current path
+  useEffect(() => {
+    const generateBreadcrumbs = () => {
+      // Home is always the first item
+      const items: BreadcrumbItem[] = [{ label: "Home", path: "/" }];
+
+      // Split the path and create breadcrumb items
+      const pathSegments = pathname?.split("/").filter(Boolean) || [];
+
+      let currentPath = "";
+      pathSegments.forEach((segment) => {
+        currentPath += `/${segment}`;
+        // Format the label - capitalize first letter and replace hyphens with spaces
+        const label = segment
+          .split("-")
+          .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+          .join(" ");
+
+        items.push({ label, path: currentPath });
+      });
+
+      setBreadcrumbs(items);
+    };
+
+    generateBreadcrumbs();
+  }, [pathname]);
 
   const handleLogout = () => {
     router.push("/auth/signout");
@@ -63,11 +99,23 @@ export function Navbar() {
     <>
       <span className="font-semibold">Zelene IoT Platform</span>
       <div className="hidden items-center space-x-2 text-sm text-muted-foreground md:flex">
-        <Home size={16} />
-        <ChevronRight size={16} />
-        <span>Profiles</span>
-        <ChevronRight size={16} />
-        <span>Device profiles</span>
+        {breadcrumbs.map((item, index) => (
+          <div key={item.path} className="flex items-center">
+            {index > 0 && <ChevronRight size={16} className="mx-2" />}
+            {index === 0 ? (
+              <Link
+                href={item.path}
+                className="flex items-center hover:text-foreground"
+              >
+                <Home size={16} />
+              </Link>
+            ) : (
+              <Link href={item.path} className="hover:text-foreground">
+                {item.label}
+              </Link>
+            )}
+          </div>
+        ))}
       </div>
     </>
   );

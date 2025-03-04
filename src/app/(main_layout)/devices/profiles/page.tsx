@@ -1,4 +1,3 @@
-// src/app/(main_layout)/devices/profile/page.tsx
 "use client";
 
 import { useState } from "react";
@@ -14,6 +13,7 @@ import {
   List,
   Radio,
   Laptop2,
+  Loader2,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -30,6 +30,7 @@ import {
   TableRow,
 } from "~/components/ui/table";
 import { useToast } from "~/hooks/use-toast";
+import { Skeleton } from "~/components/ui/skeleton";
 import type { RouterOutputs } from "~/trpc/react";
 
 type DeviceProfile = RouterOutputs["deviceProfile"]["getAll"][0];
@@ -41,7 +42,11 @@ export default function DeviceProfilesPage() {
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
 
   // Fetch profiles using tRPC
-  const { data: profiles, refetch } = api.deviceProfile.getAll.useQuery();
+  const {
+    data: profiles,
+    refetch,
+    isLoading,
+  } = api.deviceProfile.getAll.useQuery();
 
   // Delete mutation
   const deleteProfile = api.deviceProfile.delete.useMutation({
@@ -137,6 +142,32 @@ export default function DeviceProfilesPage() {
     </div>
   );
 
+  const GridSkeleton = () => (
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      {Array.from({ length: 6 }).map((_, index) => (
+        <Card key={index} className="relative">
+          <CardHeader className="pb-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Skeleton className="h-5 w-5 rounded-full" />
+                <Skeleton className="h-5 w-32" />
+              </div>
+              <Skeleton className="h-8 w-8 rounded-full" />
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Skeleton className="h-10 w-full" />
+            <div className="flex items-center justify-between">
+              <Skeleton className="h-4 w-16" />
+              <Skeleton className="h-4 w-20" />
+            </div>
+            <Skeleton className="h-4 w-32" />
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+
   const ListView = () => (
     <div className="rounded-md border">
       <Table>
@@ -179,6 +210,50 @@ export default function DeviceProfilesPage() {
     </div>
   );
 
+  const ListSkeleton = () => (
+    <div className="rounded-md border">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Name</TableHead>
+            <TableHead>Description</TableHead>
+            <TableHead>Transport</TableHead>
+            <TableHead>Devices</TableHead>
+            <TableHead>Created</TableHead>
+            <TableHead className="w-[50px]"></TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {Array.from({ length: 5 }).map((_, index) => (
+            <TableRow key={index}>
+              <TableCell>
+                <div className="flex items-center space-x-2">
+                  <Skeleton className="h-4 w-4 rounded-full" />
+                  <Skeleton className="h-4 w-24" />
+                </div>
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-4 w-48" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-4 w-16" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-4 w-8" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-4 w-24" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-8 w-8 rounded-full" />
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+
   const EmptyState = () => (
     <Card className="border-2 border-dashed">
       <CardContent className="flex flex-col items-center justify-center py-12 text-center">
@@ -198,6 +273,15 @@ export default function DeviceProfilesPage() {
     </Card>
   );
 
+  const LoadingState = () => (
+    <div className="flex items-center justify-center py-12">
+      <div className="flex flex-col items-center space-y-4">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="text-sm text-muted-foreground">Loading profiles...</p>
+      </div>
+    </div>
+  );
+
   return (
     <div className="container py-6">
       <div className="mb-8 flex items-center justify-between">
@@ -210,7 +294,7 @@ export default function DeviceProfilesPage() {
           </p>
         </div>
         <div className="flex items-center space-x-2">
-          {profiles && profiles.length > 0 && (
+          {!isLoading && profiles && profiles.length > 0 && (
             <>
               <div className="rounded-md border p-1">
                 <Button
@@ -236,10 +320,22 @@ export default function DeviceProfilesPage() {
               </Button>
             </>
           )}
+          {isLoading && (
+            <Button disabled>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Loading...
+            </Button>
+          )}
         </div>
       </div>
 
-      {!profiles?.length ? (
+      {isLoading ? (
+        viewMode === "grid" ? (
+          <GridSkeleton />
+        ) : (
+          <ListSkeleton />
+        )
+      ) : !profiles?.length ? (
         <EmptyState />
       ) : viewMode === "grid" ? (
         <GridView />

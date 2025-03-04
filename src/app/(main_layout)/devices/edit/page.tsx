@@ -12,7 +12,7 @@ export default function DeviceEditCatch() {
   useEffect(() => {
     // Redirect back to the previous page after a short delay
     const timer = setTimeout(() => {
-      router.back();
+      router.push("/devices");
     }, 3000);
 
     return () => clearTimeout(timer);
@@ -29,7 +29,11 @@ export default function DeviceEditCatch() {
         </AlertDescription>
       </Alert>
 
-      <Button variant="default" onClick={() => router.back()} className="mt-4">
+      <Button
+        variant="default"
+        onClick={() => router.push("/devices")}
+        className="mt-4"
+      >
         Go Back
       </Button>
     </div>

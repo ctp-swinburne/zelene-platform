@@ -78,7 +78,7 @@ export default function DevicesPage() {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuItem
-          onClick={() => router.push(`/devices/${device.id}/settings`)}
+          onClick={() => router.push(`/devices/edit/${device.id}`)}
         >
           <Settings2 className="mr-2 h-4 w-4" />
           Settings

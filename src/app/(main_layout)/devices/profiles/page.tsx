@@ -79,7 +79,7 @@ export default function DeviceProfilesPage() {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuItem
-          onClick={() => router.push(`/devices/profiles/${profile.id}`)}
+          onClick={() => router.push(`/devices/profiles/edit/${profile.id}`)}
         >
           <Settings2 className="mr-2 h-4 w-4" />
           Edit Profile

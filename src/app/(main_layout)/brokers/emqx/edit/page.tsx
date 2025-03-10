@@ -12,7 +12,7 @@ export default function BrokerEditCatch() {
   useEffect(() => {
     // Redirect back to the previous page after a short delay
     const timer = setTimeout(() => {
-      router.back();
+      router.push("/brokers/emqx");
     }, 3000);
 
     return () => clearTimeout(timer);
@@ -29,7 +29,11 @@ export default function BrokerEditCatch() {
         </AlertDescription>
       </Alert>
 
-      <Button variant="default" onClick={() => router.back()} className="mt-4">
+      <Button
+        variant="default"
+        onClick={() => router.push("/brokers/emqx")}
+        className="mt-4"
+      >
         Go Back
       </Button>
     </div>

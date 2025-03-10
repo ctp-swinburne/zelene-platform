@@ -7,6 +7,7 @@ import type { RouterOutputs } from "~/trpc/react";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
 import { Badge } from "~/components/ui/badge";
+import { Skeleton } from "~/components/ui/skeleton";
 import {
   MoreVertical,
   Plus,
@@ -18,6 +19,7 @@ import {
   Play,
   Square,
   AlertTriangle,
+  Loader2,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -56,6 +58,8 @@ export default function BrokersPage() {
   // Fetch brokers and stats
   const brokersQuery = api.broker.getAll.useQuery();
   const statsQuery = api.broker.getStats.useQuery();
+
+  const isLoading = brokersQuery.isLoading || statsQuery.isLoading;
 
   // Mutations
   const deleteBrokerMutation = api.broker.delete.useMutation({
@@ -147,6 +151,71 @@ export default function BrokersPage() {
     }
   };
 
+  // Stats Cards Skeleton
+  const StatsCardsSkeleton = () => (
+    <div className="grid grid-cols-4 gap-4">
+      {Array.from({ length: 4 }).map((_, index) => (
+        <Card key={index}>
+          <CardHeader className="pb-2">
+            <Skeleton className="h-4 w-24" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-8 w-12" />
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+
+  // Broker Cards Skeleton
+  const BrokerCardsSkeleton = () => (
+    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      {Array.from({ length: 6 }).map((_, index) => (
+        <Card key={index} className="bg-card">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div>
+              <Skeleton className="h-6 w-32" />
+              <div className="mt-2">
+                <Skeleton className="h-5 w-24" />
+              </div>
+            </div>
+            <Skeleton className="h-8 w-8 rounded-full" />
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center space-x-2">
+              <Skeleton className="h-4 w-4 rounded-full" />
+              <Skeleton className="h-4 w-16" />
+            </div>
+
+            <div className="mt-4 space-y-3">
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-20" />
+                <div className="flex flex-wrap gap-2">
+                  <Skeleton className="h-6 w-20" />
+                  <Skeleton className="h-6 w-20" />
+                  <Skeleton className="h-6 w-20" />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-20" />
+                <div className="flex flex-wrap gap-2">
+                  <Skeleton className="h-6 w-24" />
+                  <Skeleton className="h-6 w-24" />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-2">
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-4 w-32" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+
   return (
     <div className="flex min-h-screen flex-col space-y-6 p-8">
       <div className="flex items-center justify-between">
@@ -158,87 +227,91 @@ export default function BrokersPage() {
             Manage and monitor your EMQX message brokers and clusters
           </p>
         </div>
-        <Button
-          className="flex items-center gap-2"
-          onClick={handleCreateBroker}
-        >
-          <Plus className="h-4 w-4" />
-          Add EMQX Broker
-        </Button>
+        {isLoading ? (
+          <Button disabled className="flex items-center gap-2">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Loading...
+          </Button>
+        ) : (
+          <Button
+            className="flex items-center gap-2"
+            onClick={handleCreateBroker}
+          >
+            <Plus className="h-4 w-4" />
+            Add EMQX Broker
+          </Button>
+        )}
       </div>
 
       {/* Stats summary cards */}
-      {statsQuery.data && (
-        <div className="grid grid-cols-4 gap-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total Brokers
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{statsQuery.data.total}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Running
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-500">
-                {statsQuery.data.running}
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Stopped
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-amber-500">
-                {statsQuery.data.stopped}
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Error
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-destructive">
-                {statsQuery.data.error}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+      {isLoading ? (
+        <StatsCardsSkeleton />
+      ) : (
+        statsQuery.data && (
+          <div className="grid grid-cols-4 gap-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Total Brokers
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {statsQuery.data.total}
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Running
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-500">
+                  {statsQuery.data.running}
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Stopped
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-amber-500">
+                  {statsQuery.data.stopped}
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Error
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-destructive">
+                  {statsQuery.data.error}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )
       )}
 
       {/* Loading state */}
-      {brokersQuery.isLoading && (
-        <div className="flex items-center justify-center p-8">
-          <div className="text-lg text-muted-foreground">
-            Loading brokers...
-          </div>
-        </div>
-      )}
-
-      {/* Error state */}
-      {brokersQuery.isError && (
-        <div className="flex items-center justify-center p-8">
-          <div className="text-lg text-destructive">
+      {isLoading ? (
+        <BrokerCardsSkeleton />
+      ) : brokersQuery.isError ? (
+        <div className="flex items-center justify-center rounded-lg border border-destructive p-8">
+          <div className="flex items-center text-lg text-destructive">
+            <AlertTriangle className="mr-2 h-5 w-5" />
             Error loading brokers: {brokersQuery.error.message}
           </div>
         </div>
-      )}
-
-      {/* Broker cards */}
-      {brokersQuery.data && brokersQuery.data.length === 0 && (
+      ) : brokersQuery.data && brokersQuery.data.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-8">
           <h3 className="text-lg font-medium">No brokers found</h3>
           <p className="text-sm text-muted-foreground">
@@ -253,11 +326,9 @@ export default function BrokersPage() {
             Add Broker
           </Button>
         </div>
-      )}
-
-      {brokersQuery.data && brokersQuery.data.length > 0 && (
+      ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {brokersQuery.data.map((broker) => (
+          {brokersQuery.data?.map((broker) => (
             <Card key={broker.id} className="bg-card">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <div>

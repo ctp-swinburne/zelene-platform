@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "~/trpc/react";
+import type { RouterOutputs } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
@@ -25,13 +26,17 @@ export default function DeviceProfileCreation() {
   const utils = api.useUtils();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Explicitly set all fields including isDefault
+  // Explicitly set all fields including isDefault and brokerId
   const [formData, setFormData] = useState<CreateProfileInput>({
     name: "",
     description: "",
     transport: "MQTT" as const,
     isDefault: false,
+    brokerId: undefined, // Initialize brokerId
   });
+
+  // Fetch brokers for dropdown
+  const { data: brokers } = api.broker.getAll.useQuery();
 
   // Setup mutation
   const createProfile = api.deviceProfile.create.useMutation({
@@ -64,11 +69,13 @@ export default function DeviceProfileCreation() {
         description: formData.description ?? "",
         transport: formData.transport,
         isDefault: Boolean(formData.isDefault), // Ensure boolean type
+        brokerId: formData.brokerId === "none" ? undefined : formData.brokerId, // Handle "none" selection
       };
 
       await createProfile.mutateAsync(profileData);
     } catch (error) {
       console.error("Error creating device profile:", error);
+      setIsSubmitting(false);
     }
   };
 
@@ -157,6 +164,36 @@ export default function DeviceProfileCreation() {
                 <p className="text-sm text-muted-foreground">
                   Select the communication protocol for devices using this
                   profile
+                </p>
+              </div>
+
+              {/* New Broker Selection */}
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">MQTT Broker</label>
+                <Select
+                  value={formData.brokerId ?? "none"}
+                  onValueChange={(value) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      brokerId: value === "none" ? undefined : value,
+                    }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a broker" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None (No Broker)</SelectItem>
+                    {brokers?.map((broker) => (
+                      <SelectItem key={broker.id} value={broker.id}>
+                        {broker.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-sm text-muted-foreground">
+                  Associate a broker with this profile. Devices using this
+                  profile will inherit this broker.
                 </p>
               </div>
 

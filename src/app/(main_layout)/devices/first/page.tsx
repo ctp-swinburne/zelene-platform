@@ -1,7 +1,7 @@
 // app/(main_layout)/devices/first/page.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "~/trpc/react";
 import type { RouterOutputs } from "~/trpc/react";
@@ -12,21 +12,53 @@ import { Label } from "~/components/ui/label";
 import { useToast } from "~/hooks/use-toast";
 import { MonitorSmartphone, ArrowRight, ChevronLeft } from "lucide-react";
 import type { CreateDeviceInput } from "~/schema/device";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "~/components/ui/select";
 
 export default function FirstDevicePage() {
   const router = useRouter();
   const { toast } = useToast();
   const utils = api.useUtils();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isBrokerInherited, setIsBrokerInherited] = useState(false);
   const [formData, setFormData] = useState<CreateDeviceInput>({
     name: "",
     deviceId: "",
+    profileId: undefined,
+    brokerId: undefined,
   });
 
   // Fetch default profile
   const { data: profiles } = api.deviceProfile.getAll.useQuery(undefined, {
     select: (data) => data.filter((profile) => profile.isDefault),
   });
+
+  // Fetch brokers
+  const { data: brokers } = api.broker.getAll.useQuery();
+
+  // Effect to automatically select broker when profile changes
+  useEffect(() => {
+    const defaultProfile = profiles?.[0];
+    if (defaultProfile) {
+      setFormData((prev) => ({
+        ...prev,
+        profileId: defaultProfile.id,
+      }));
+
+      if (defaultProfile.broker) {
+        setFormData((prev) => ({
+          ...prev,
+          brokerId: defaultProfile.broker!.id,
+        }));
+        setIsBrokerInherited(true);
+      }
+    }
+  }, [profiles]);
 
   // Setup create device mutation
   const createDevice = api.device.create.useMutation({
@@ -66,14 +98,26 @@ export default function FirstDevicePage() {
     }
 
     try {
-      await createDevice.mutateAsync({
+      // Use explicitly specified brokerId or the one from the profile
+      const deviceData = {
         ...formData,
-        profileId: defaultProfile.id,
-      });
+        profileId: formData.profileId,
+        brokerId: formData.brokerId === "none" ? undefined : formData.brokerId,
+      };
+
+      await createDevice.mutateAsync(deviceData);
     } catch (error) {
       console.error("Error creating device:", error);
+      setIsSubmitting(false);
     }
   };
+
+  // Get the selected profile info
+  const selectedProfileId = formData.profileId;
+  const selectedProfile = selectedProfileId
+    ? profiles?.find((p) => p.id === selectedProfileId)
+    : null;
+  const profileHasBroker = selectedProfile?.broker != null;
 
   return (
     <div className="container mx-auto max-w-3xl py-6">
@@ -127,6 +171,37 @@ export default function FirstDevicePage() {
                   }
                   required
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="brokerId">MQTT Broker</Label>
+                <Select
+                  value={formData.brokerId ?? "none"}
+                  onValueChange={(value) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      brokerId: value === "none" ? undefined : value,
+                    }))
+                  }
+                  disabled={isBrokerInherited}
+                >
+                  <SelectTrigger id="brokerId">
+                    <SelectValue placeholder="Select a broker" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None (No Broker)</SelectItem>
+                    {brokers?.map((broker) => (
+                      <SelectItem key={broker.id} value={broker.id}>
+                        {broker.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {isBrokerInherited && (
+                  <p className="mt-1 text-xs text-amber-500">
+                    Broker is inherited from the default profile
+                  </p>
+                )}
               </div>
 
               <div className="pt-4">

@@ -13,6 +13,7 @@ export const createDeviceSchema = z.object({
   name: z.string().min(1, "Device name is required"),
   deviceId: z.string().min(1, "Device ID is required"),
   profileId: z.string().optional(),
+  brokerId: z.string().optional(), // New field for broker association
 });
 export type CreateDeviceInput = z.infer<typeof createDeviceSchema>;
 
@@ -21,6 +22,7 @@ export const updateDeviceSchema = z.object({
   name: z.string().min(1, "Device name is required").optional(),
   status: deviceStatusEnum.optional(),
   profileId: z.string().optional(),
+  brokerId: z.string().optional(), // New field for broker association
 });
 export type UpdateDeviceInput = z.infer<typeof updateDeviceSchema>;
 

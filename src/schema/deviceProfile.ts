@@ -9,6 +9,7 @@ export const createProfileSchema = z.object({
   description: z.string().optional(),
   transport: transportTypeEnum,
   isDefault: z.boolean().optional(),
+  brokerId: z.string().optional(), // New field for broker association
 });
 export type CreateProfileInput = z.infer<typeof createProfileSchema>;
 
@@ -18,5 +19,6 @@ export const updateProfileSchema = z.object({
   description: z.string().optional(),
   transport: transportTypeEnum.optional(),
   isDefault: z.boolean().optional(),
+  brokerId: z.string().optional(), // New field for broker association
 });
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;

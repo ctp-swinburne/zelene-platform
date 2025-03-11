@@ -46,6 +46,9 @@ export default function DeviceProfileEditPage() {
   // Get the profile ID from URL params
   const profileId = params.id as string;
 
+  // Fetch brokers for dropdown
+  const { data: brokers } = api.broker.getAll.useQuery();
+
   // Fetch profile data
   const {
     data: profile,
@@ -53,7 +56,6 @@ export default function DeviceProfileEditPage() {
     error: profileError,
   } = api.deviceProfile.getById.useQuery(profileId, {
     enabled: !!profileId,
-    // Remove the onError from the options
   });
 
   // Handle error in your component directly using the profileError value
@@ -73,6 +75,7 @@ export default function DeviceProfileEditPage() {
     resolver: zodResolver(updateProfileSchema),
     defaultValues: {
       id: profileId,
+      brokerId: undefined, // Initialize brokerId field
     } as UpdateProfileInput,
   });
 
@@ -85,6 +88,7 @@ export default function DeviceProfileEditPage() {
         description: profile.description ?? undefined,
         transport: profile.transport,
         isDefault: profile.isDefault,
+        brokerId: profile.brokerId ?? undefined,
       });
     }
   }, [profile, form]);
@@ -109,6 +113,10 @@ export default function DeviceProfileEditPage() {
 
   // Handle form submission
   const onSubmit = (data: UpdateProfileInput) => {
+    // If brokerId is "none", set it to undefined
+    if (data.brokerId === "none") {
+      data.brokerId = undefined;
+    }
     updateProfileMutation.mutate(data);
   };
 
@@ -205,6 +213,40 @@ export default function DeviceProfileEditPage() {
                         <SelectItem value="TCP">TCP</SelectItem>
                       </SelectContent>
                     </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Add Broker Selection */}
+              <FormField
+                control={form.control}
+                name="brokerId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>MQTT Broker</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value ?? "none"}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a broker" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="none">None (No Broker)</SelectItem>
+                        {brokers?.map((broker) => (
+                          <SelectItem key={broker.id} value={broker.id}>
+                            {broker.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormDescription>
+                      Associate a broker with this profile. Devices using this
+                      profile will inherit this broker.
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

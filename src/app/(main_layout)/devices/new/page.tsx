@@ -1,7 +1,6 @@
-// app/(dashboard)/devices/new/page.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { type RouterOutputs } from "~/trpc/react";
 import { api } from "~/trpc/react";
@@ -12,9 +11,9 @@ import { useToast } from "~/hooks/use-toast";
 import {
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
-  CardDescription,
   CardFooter,
 } from "~/components/ui/card";
 import {
@@ -35,11 +34,35 @@ export default function NewDevicePage() {
     name: "",
     deviceId: "",
     profileId: undefined,
+    brokerId: undefined,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isBrokerInherited, setIsBrokerInherited] = useState(false);
 
   // Fetch device profiles for the select dropdown
   const { data: profiles } = api.deviceProfile.getAll.useQuery();
+
+  // Fetch brokers for dropdown
+  const { data: brokers } = api.broker.getAll.useQuery();
+
+  // Effect to automatically select broker when profile changes
+  useEffect(() => {
+    if (formData.profileId && profiles) {
+      const selectedProfile = profiles.find((p) => p.id === formData.profileId);
+
+      if (selectedProfile?.broker) {
+        setFormData((prev) => ({
+          ...prev,
+          brokerId: selectedProfile.broker!.id,
+        }));
+        setIsBrokerInherited(true);
+      } else {
+        setIsBrokerInherited(false);
+      }
+    } else {
+      setIsBrokerInherited(false);
+    }
+  }, [formData.profileId, profiles]);
 
   // Setup mutation
   const createDevice = api.device.create.useMutation({
@@ -67,11 +90,28 @@ export default function NewDevicePage() {
     setIsSubmitting(true);
 
     try {
-      await createDevice.mutateAsync(formData);
+      // Handle "none" selections for broker and profile
+      const deviceData = {
+        ...formData,
+        profileId:
+          formData.profileId === "none" ? undefined : formData.profileId,
+        brokerId: formData.brokerId === "none" ? undefined : formData.brokerId,
+      };
+
+      await createDevice.mutateAsync(deviceData);
     } catch (error) {
       console.error("Error creating device:", error);
+      setIsSubmitting(false);
     }
   };
+
+  // Check if the selected profile has a broker
+  const selectedProfile =
+    formData.profileId && formData.profileId !== "none"
+      ? profiles?.find((p) => p.id === formData.profileId)
+      : null;
+  const profileHasBroker = selectedProfile?.broker != null;
+
   return (
     <div className="flex-1 space-y-6">
       <div className="flex items-center gap-4 border-b pb-4">
@@ -129,22 +169,66 @@ export default function NewDevicePage() {
               <div className="space-y-2">
                 <Label htmlFor="profileId">Device Profile</Label>
                 <Select
-                  value={formData.profileId}
+                  value={formData.profileId ?? "none"}
                   onValueChange={(value) =>
-                    setFormData((prev) => ({ ...prev, profileId: value }))
+                    setFormData((prev) => ({
+                      ...prev,
+                      profileId: value === "none" ? undefined : value,
+                      // Reset broker if profile is changed to none
+                      brokerId: value === "none" ? undefined : prev.brokerId,
+                    }))
                   }
                 >
                   <SelectTrigger id="profileId">
                     <SelectValue placeholder="Select a device profile" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="none">None (No Profile)</SelectItem>
                     {profiles?.map((profile) => (
                       <SelectItem key={profile.id} value={profile.id}>
                         {profile.name}
+                        {profile.isDefault ? " (Default)" : ""}
+                        {profile.broker ? ` - Uses ${profile.broker.name}` : ""}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                {profileHasBroker && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    This profile uses broker: {selectedProfile?.broker?.name}
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="brokerId">MQTT Broker</Label>
+                <Select
+                  value={formData.brokerId ?? "none"}
+                  onValueChange={(value) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      brokerId: value === "none" ? undefined : value,
+                    }))
+                  }
+                  disabled={isBrokerInherited}
+                >
+                  <SelectTrigger id="brokerId">
+                    <SelectValue placeholder="Select a broker" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None (No Broker)</SelectItem>
+                    {brokers?.map((broker) => (
+                      <SelectItem key={broker.id} value={broker.id}>
+                        {broker.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {isBrokerInherited && (
+                  <p className="mt-1 text-xs text-amber-500">
+                    Broker is inherited from the selected profile
+                  </p>
+                )}
               </div>
             </CardContent>
             <CardFooter className="flex justify-between">

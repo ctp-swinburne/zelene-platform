@@ -8,6 +8,7 @@ import { Button } from "~/components/ui/button";
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -28,17 +29,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
-import { Loader2 } from "lucide-react";
+import { Loader2, AlertCircle } from "lucide-react";
 import { api } from "~/trpc/react";
 import type { RouterOutputs } from "~/trpc/react";
 import { updateDeviceSchema } from "~/schema/device";
 import type { UpdateDeviceInput } from "~/schema/device";
 import { useToast } from "~/hooks/use-toast";
+import { Alert, AlertDescription } from "~/components/ui/alert";
 
 export default function DeviceEditPage() {
   const router = useRouter();
   const params = useParams();
   const { toast } = useToast();
+  const [isBrokerInherited, setIsBrokerInherited] = useState(false);
+  const [previousProfileId, setPreviousProfileId] = useState<
+    string | undefined
+  >(undefined);
 
   // Get the device ID from URL params
   const deviceId = params.id as string;
@@ -50,8 +56,13 @@ export default function DeviceEditPage() {
     error,
   } = api.device.getById.useQuery(deviceId, {
     enabled: !!deviceId,
-    // Remove the onError from the options
   });
+
+  // Fetch device profiles for the dropdown
+  const { data: profiles } = api.deviceProfile.getAll.useQuery();
+
+  // Fetch brokers for dropdown
+  const { data: brokers } = api.broker.getAll.useQuery();
 
   // Handle error in your component directly using the error value
   useEffect(() => {
@@ -64,8 +75,6 @@ export default function DeviceEditPage() {
       router.push("/devices");
     }
   }, [error, router, toast]);
-  // Fetch device profiles for the dropdown
-  const { data: profiles } = api.deviceProfile.getAll.useQuery();
 
   // Set up the form
   const form = useForm<UpdateDeviceInput>({
@@ -74,9 +83,13 @@ export default function DeviceEditPage() {
       id: deviceId,
       name: "",
       status: undefined,
-      profileId: "none",
+      profileId: undefined,
+      brokerId: undefined,
     },
   });
+
+  // Get the current values from the form
+  const watchProfileId = form.watch("profileId");
 
   // Update form when device data is loaded
   useEffect(() => {
@@ -85,10 +98,44 @@ export default function DeviceEditPage() {
         id: device.id,
         name: device.name,
         status: device.status,
-        profileId: device.profileId ?? "none",
+        profileId: device.profileId ?? undefined,
+        brokerId: device.brokerId ?? undefined,
       });
+
+      // Store initial profile ID to detect changes
+      setPreviousProfileId(device.profileId ?? undefined);
+
+      // Check if broker is inherited from profile
+      setIsBrokerInherited(
+        !!device.profileId &&
+          !!device.profile?.brokerId &&
+          device.brokerId === device.profile?.brokerId,
+      );
     }
   }, [device, form]);
+
+  // Effect to handle profile changes and broker inheritance
+  useEffect(() => {
+    if (watchProfileId !== previousProfileId && profiles) {
+      // Profile has changed
+      if (watchProfileId && watchProfileId !== "none") {
+        const selectedProfile = profiles.find((p) => p.id === watchProfileId);
+
+        if (selectedProfile?.broker) {
+          // Set broker ID from the new profile
+          form.setValue("brokerId", selectedProfile.broker.id);
+          setIsBrokerInherited(true);
+        } else {
+          setIsBrokerInherited(false);
+        }
+      } else {
+        // Profile removed or set to none
+        setIsBrokerInherited(false);
+      }
+
+      setPreviousProfileId(watchProfileId);
+    }
+  }, [watchProfileId, previousProfileId, profiles, form]);
 
   // Update mutation
   const updateDeviceMutation = api.device.update.useMutation({
@@ -110,10 +157,11 @@ export default function DeviceEditPage() {
 
   // Handle form submission
   const onSubmit = (data: UpdateDeviceInput) => {
-    // Convert "none" profileId to undefined before submission
+    // Convert "none" values to undefined before submission
     const submissionData = {
       ...data,
       profileId: data.profileId === "none" ? undefined : data.profileId,
+      brokerId: data.brokerId === "none" ? undefined : data.brokerId,
     };
 
     updateDeviceMutation.mutate(submissionData);
@@ -135,6 +183,13 @@ export default function DeviceEditPage() {
       </div>
     );
   }
+
+  // Get profile related info for display
+  const selectedProfile =
+    watchProfileId && watchProfileId !== "none"
+      ? profiles?.find((p) => p.id === watchProfileId)
+      : null;
+  const profileHasBroker = selectedProfile?.broker != null;
 
   return (
     <div className="container mx-auto py-6">
@@ -202,7 +257,7 @@ export default function DeviceEditPage() {
                     <FormLabel>Device Profile</FormLabel>
                     <Select
                       onValueChange={field.onChange}
-                      value={field.value ?? ""}
+                      value={field.value ?? "none"}
                     >
                       <FormControl>
                         <SelectTrigger>
@@ -214,10 +269,54 @@ export default function DeviceEditPage() {
                         {profiles?.map((profile) => (
                           <SelectItem key={profile.id} value={profile.id}>
                             {profile.name} {profile.isDefault && "(Default)"}
+                            {profile.broker
+                              ? ` - Uses ${profile.broker.name}`
+                              : ""}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
+                    {profileHasBroker && (
+                      <FormDescription>
+                        This profile uses broker:{" "}
+                        {selectedProfile?.broker?.name}
+                      </FormDescription>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="brokerId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>MQTT Broker</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value ?? "none"}
+                      disabled={isBrokerInherited}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a broker" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        {brokers?.map((broker) => (
+                          <SelectItem key={broker.id} value={broker.id}>
+                            {broker.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {isBrokerInherited && (
+                      <FormDescription className="text-amber-500">
+                        Broker is inherited from the selected profile
+                      </FormDescription>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )}

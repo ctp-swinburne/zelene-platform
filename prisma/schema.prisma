@@ -1,4 +1,4 @@
-// This is your Prisma schema file
+// This is your updated Prisma schema file
 generator client {
     provider = "prisma-client-js"
 }
@@ -68,7 +68,7 @@ model Device {
     profileId String?
     userId    String
     lastSeen  DateTime?
-    brokerId  String? // New field to associate devices with brokers
+    brokerId  String? // Can be assigned directly or inherited from profile
 
     profile DeviceProfile? @relation(fields: [profileId], references: [id])
     user    User           @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -88,13 +88,15 @@ model DeviceProfile {
     transport   TransportType @default(MQTT)
     isDefault   Boolean       @default(false)
     userId      String
+    brokerId    String? // New field to associate profiles with brokers
 
     devices Device[]
     user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+    broker  Broker?  @relation(fields: [brokerId], references: [id]) // New relation
 
-    // Only create a unique constraint when isDefault is true
     @@index([userId])
     @@index([userId, isDefault])
+    @@index([brokerId]) // New index
 }
 
 enum DeviceStatus {
@@ -167,8 +169,9 @@ model Broker {
     status BrokerStatus @default(STOPPED)
 
     // Relations
-    user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-    devices Device[]
+    user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+    devices        Device[] // Devices directly using this broker
+    deviceProfiles DeviceProfile[] // Device profiles using this broker (new relation)
 
     @@index([userId])
 }

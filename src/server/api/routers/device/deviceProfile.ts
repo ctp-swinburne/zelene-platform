@@ -12,7 +12,7 @@ export const deviceProfileRouter = createTRPCRouter({
   getAll: protectedProcedure.query(async ({ ctx }) => {
     return ctx.db.deviceProfile.findMany({
       where: { userId: ctx.session.user.id },
-      include: { devices: true },
+      include: { devices: true, broker: true },
     });
   }),
 
@@ -24,7 +24,7 @@ export const deviceProfileRouter = createTRPCRouter({
           id: input,
           userId: ctx.session.user.id,
         },
-        include: { devices: true },
+        include: { devices: true, broker: true },
       });
     }),
 
@@ -56,7 +56,7 @@ export const deviceProfileRouter = createTRPCRouter({
           }
         }
 
-        // Create the new profile
+        // Create the new profile with broker if provided
         return tx.deviceProfile.create({
           data: {
             name: input.name,
@@ -64,7 +64,9 @@ export const deviceProfileRouter = createTRPCRouter({
             transport: input.transport,
             isDefault: input.isDefault,
             userId: ctx.session.user.id,
+            brokerId: input.brokerId, // Add brokerId if specified
           },
+          include: { broker: true },
         });
       });
     }),
@@ -97,6 +99,7 @@ export const deviceProfileRouter = createTRPCRouter({
             userId: ctx.session.user.id,
           },
           data: updateData,
+          include: { broker: true },
         });
       });
     }),

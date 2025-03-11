@@ -3,8 +3,10 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "~/trpc/react";
+import type { RouterOutputs } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { Badge } from "~/components/ui/badge";
 import {
   Settings2,
   Plus,
@@ -14,6 +16,7 @@ import {
   Radio,
   Laptop2,
   Loader2,
+  Server,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -31,7 +34,6 @@ import {
 } from "~/components/ui/table";
 import { useToast } from "~/hooks/use-toast";
 import { Skeleton } from "~/components/ui/skeleton";
-import type { RouterOutputs } from "~/trpc/react";
 
 type DeviceProfile = RouterOutputs["deviceProfile"]["getAll"][0];
 type ViewMode = "grid" | "list";
@@ -117,6 +119,11 @@ export default function DeviceProfilesPage() {
                 <Laptop2 className="h-5 w-5" />
                 <CardTitle className="text-base font-medium">
                   {profile.name}
+                  {profile.isDefault && (
+                    <Badge variant="outline" className="ml-2 text-xs">
+                      Default
+                    </Badge>
+                  )}
                 </CardTitle>
               </div>
               <ProfileActions profile={profile} />
@@ -126,13 +133,35 @@ export default function DeviceProfilesPage() {
             <p className="line-clamp-2 text-sm text-muted-foreground">
               {profile.description}
             </p>
-            <div className="flex items-center justify-between">
-              <TransportBadge type={profile.transport} />
-              <span className="text-sm">
-                {profile.devices.length}{" "}
-                {profile.devices.length === 1 ? "device" : "devices"}
-              </span>
+
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <TransportBadge type={profile.transport} />
+                <span className="text-sm">
+                  {profile.devices.length}{" "}
+                  {profile.devices.length === 1 ? "device" : "devices"}
+                </span>
+              </div>
+
+              {/* Display broker information */}
+              {profile.broker ? (
+                <div className="flex items-center gap-2 text-sm">
+                  <Server className="h-3.5 w-3.5 text-blue-500" />
+                  <span className="text-muted-foreground">
+                    Using broker:{" "}
+                    <span className="font-medium text-blue-500">
+                      {profile.broker.name}
+                    </span>
+                  </span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Server className="h-3.5 w-3.5" />
+                  <span>No broker connected</span>
+                </div>
+              )}
             </div>
+
             <div className="text-xs text-muted-foreground">
               Created: {new Date(profile.createdAt).toLocaleDateString()}
             </div>
@@ -176,6 +205,7 @@ export default function DeviceProfilesPage() {
             <TableHead>Name</TableHead>
             <TableHead>Description</TableHead>
             <TableHead>Transport</TableHead>
+            <TableHead>Broker</TableHead>
             <TableHead>Devices</TableHead>
             <TableHead>Created</TableHead>
             <TableHead className="w-[50px]"></TableHead>
@@ -188,6 +218,11 @@ export default function DeviceProfilesPage() {
                 <div className="flex items-center space-x-2">
                   <Laptop2 className="h-4 w-4" />
                   <span>{profile.name}</span>
+                  {profile.isDefault && (
+                    <Badge variant="outline" className="ml-2 text-xs">
+                      Default
+                    </Badge>
+                  )}
                 </div>
               </TableCell>
               <TableCell className="max-w-xs truncate">
@@ -195,6 +230,16 @@ export default function DeviceProfilesPage() {
               </TableCell>
               <TableCell>
                 <TransportBadge type={profile.transport} />
+              </TableCell>
+              <TableCell>
+                {profile.broker ? (
+                  <div className="flex items-center gap-2">
+                    <Server className="h-4 w-4 text-blue-500" />
+                    <span className="text-blue-500">{profile.broker.name}</span>
+                  </div>
+                ) : (
+                  <span className="text-muted-foreground">None</span>
+                )}
               </TableCell>
               <TableCell>{profile.devices.length}</TableCell>
               <TableCell className="text-muted-foreground">
@@ -218,6 +263,7 @@ export default function DeviceProfilesPage() {
             <TableHead>Name</TableHead>
             <TableHead>Description</TableHead>
             <TableHead>Transport</TableHead>
+            <TableHead>Broker</TableHead>
             <TableHead>Devices</TableHead>
             <TableHead>Created</TableHead>
             <TableHead className="w-[50px]"></TableHead>
@@ -234,6 +280,9 @@ export default function DeviceProfilesPage() {
               </TableCell>
               <TableCell>
                 <Skeleton className="h-4 w-48" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-4 w-16" />
               </TableCell>
               <TableCell>
                 <Skeleton className="h-4 w-16" />

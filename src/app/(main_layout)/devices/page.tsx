@@ -3,8 +3,10 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "~/trpc/react";
+import type { RouterOutputs } from "~/trpc/react";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { Badge } from "~/components/ui/badge";
 import {
   MonitorSmartphone,
   Plus,
@@ -13,6 +15,8 @@ import {
   LayoutGrid,
   List,
   Loader2,
+  Server,
+  Layers,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -30,7 +34,12 @@ import {
 } from "~/components/ui/table";
 import { useToast } from "~/hooks/use-toast";
 import { Skeleton } from "~/components/ui/skeleton";
-import type { RouterOutputs } from "~/trpc/react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "~/components/ui/tooltip";
 
 type Device = RouterOutputs["device"]["getAll"][0];
 type ViewMode = "grid" | "list";
@@ -107,6 +116,15 @@ export default function DevicesPage() {
     </div>
   );
 
+  // Helper to determine if broker is inherited from profile
+  const isBrokerInherited = (device: Device) => {
+    return (
+      device.profileId &&
+      device.profile?.brokerId &&
+      device.brokerId === device.profile?.brokerId
+    );
+  };
+
   const GridView = () => (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
       {devices?.map((device) => (
@@ -122,13 +140,51 @@ export default function DevicesPage() {
               <DeviceActions device={device} />
             </div>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="space-y-3">
             <div className="flex items-center justify-between">
               <StatusIndicator status={device.status} />
-              <span className="text-xs text-muted-foreground">
-                {device.profile?.name ?? "No Profile"}
-              </span>
+              {device.profile && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex items-center space-x-1">
+                        <Layers className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="text-xs text-muted-foreground">
+                          {device.profile?.name}
+                        </span>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Using device profile: {device.profile?.name}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
             </div>
+
+            {/* Broker Information */}
+            {device.broker && (
+              <div className="flex items-center space-x-1">
+                <Server
+                  className={`h-3.5 w-3.5 ${isBrokerInherited(device) ? "text-blue-400" : "text-blue-500"}`}
+                />
+                <span
+                  className={`text-xs ${isBrokerInherited(device) ? "text-blue-400" : "text-blue-500"}`}
+                >
+                  {device.broker.name}
+                  {isBrokerInherited(device) && " (inherited)"}
+                </span>
+              </div>
+            )}
+            {!device.broker && (
+              <div className="flex items-center space-x-1">
+                <Server className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">
+                  No broker connected
+                </span>
+              </div>
+            )}
+
             <div className="flex items-center justify-between text-sm">
               <div className="flex items-center space-x-2">
                 <span className="text-muted-foreground">Device ID:</span>
@@ -164,6 +220,7 @@ export default function DevicesPage() {
               <Skeleton className="h-4 w-16" />
               <Skeleton className="h-4 w-20" />
             </div>
+            <Skeleton className="h-4 w-24" />
             <div className="flex items-center justify-between">
               <Skeleton className="h-4 w-24" />
               <Skeleton className="h-4 w-32" />
@@ -182,6 +239,7 @@ export default function DevicesPage() {
             <TableHead>Name</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Profile</TableHead>
+            <TableHead>Broker</TableHead>
             <TableHead>Device ID</TableHead>
             <TableHead>Last Seen</TableHead>
             <TableHead className="w-[50px]"></TableHead>
@@ -199,7 +257,39 @@ export default function DevicesPage() {
               <TableCell>
                 <StatusIndicator status={device.status} />
               </TableCell>
-              <TableCell>{device.profile?.name ?? "No Profile"}</TableCell>
+              <TableCell>
+                {device.profile ? (
+                  <div className="flex items-center space-x-1">
+                    <Layers className="h-4 w-4 text-muted-foreground" />
+                    <span>{device.profile.name}</span>
+                  </div>
+                ) : (
+                  <span className="text-muted-foreground">No Profile</span>
+                )}
+              </TableCell>
+              <TableCell>
+                {device.broker ? (
+                  <div className="flex items-center space-x-1">
+                    <Server
+                      className={`h-4 w-4 ${isBrokerInherited(device) ? "text-blue-400" : "text-blue-500"}`}
+                    />
+                    <span
+                      className={
+                        isBrokerInherited(device)
+                          ? "text-blue-400"
+                          : "text-blue-500"
+                      }
+                    >
+                      {device.broker.name}
+                      {isBrokerInherited(device) && (
+                        <span className="ml-1 text-xs">(inherited)</span>
+                      )}
+                    </span>
+                  </div>
+                ) : (
+                  <span className="text-muted-foreground">None</span>
+                )}
+              </TableCell>
               <TableCell className="font-mono text-xs">
                 {device.deviceId}
               </TableCell>
@@ -226,6 +316,7 @@ export default function DevicesPage() {
             <TableHead>Name</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Profile</TableHead>
+            <TableHead>Broker</TableHead>
             <TableHead>Device ID</TableHead>
             <TableHead>Last Seen</TableHead>
             <TableHead className="w-[50px]"></TableHead>
@@ -242,6 +333,9 @@ export default function DevicesPage() {
               </TableCell>
               <TableCell>
                 <Skeleton className="h-4 w-16" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-4 w-20" />
               </TableCell>
               <TableCell>
                 <Skeleton className="h-4 w-20" />

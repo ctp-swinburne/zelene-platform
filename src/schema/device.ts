@@ -1,5 +1,6 @@
-// ~/schema/device.ts
+// src/schema/device.ts
 import { z } from "zod";
+import { isValidDeviceId } from "~/lib/mqtt-utils";
 
 export const deviceStatusEnum = z.enum([
   "ONLINE",
@@ -9,9 +10,18 @@ export const deviceStatusEnum = z.enum([
 ]);
 export type DeviceStatus = z.infer<typeof deviceStatusEnum>;
 
+// Validate the deviceId to ensure it can be used in MQTT topics
+const deviceIdValidator = z
+  .string()
+  .min(1, "Device ID is required")
+  .refine(isValidDeviceId, {
+    message:
+      "Device ID can only contain letters, numbers, hyphens, and underscores",
+  });
+
 export const createDeviceSchema = z.object({
   name: z.string().min(1, "Device name is required"),
-  deviceId: z.string().min(1, "Device ID is required"),
+  deviceId: deviceIdValidator,
   profileId: z.string().optional(),
   brokerId: z.string().optional(), // New field for broker association
 });

@@ -23,8 +23,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
-import { ChevronLeft, Plus } from "lucide-react";
+import { ChevronLeft, Plus, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
+import { MqttTopicDisplay } from "~/components/mqtt/mqttTopicDisplay";
+import { isValidDeviceId } from "~/lib/mqtt-utils";
 import type { CreateDeviceInput } from "~/schema/device";
+import type { MqttTopic } from "~/components/mqtt/mqttTopicEditor";
 
 export default function NewDevicePage() {
   const router = useRouter();
@@ -38,6 +42,8 @@ export default function NewDevicePage() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isBrokerInherited, setIsBrokerInherited] = useState(false);
+  const [deviceIdError, setDeviceIdError] = useState<string | null>(null);
+  const [profileMqttTopics, setProfileMqttTopics] = useState<MqttTopic[]>([]);
 
   // Fetch device profiles for the select dropdown
   const { data: profiles } = api.deviceProfile.getAll.useQuery();
@@ -59,10 +65,48 @@ export default function NewDevicePage() {
       } else {
         setIsBrokerInherited(false);
       }
+
+      // If the profile has MQTT transport, fetch its topics
+      if (selectedProfile && selectedProfile.transport === "MQTT") {
+        // eslint-disable-next-line @typescript-eslint/no-floating-promises
+        fetchProfileMqttTopics(selectedProfile.id);
+      } else {
+        setProfileMqttTopics([]);
+      }
     } else {
       setIsBrokerInherited(false);
+      setProfileMqttTopics([]);
     }
   }, [formData.profileId, profiles]);
+
+  // Fetch MQTT topics for the selected profile
+  const fetchProfileMqttTopics = async (profileId: string) => {
+    try {
+      const topics = await utils.mqttTopic.getAllByProfileId.fetch(profileId);
+      setProfileMqttTopics(topics);
+    } catch (error) {
+      console.error("Error fetching MQTT topics:", error);
+      setProfileMqttTopics([]);
+    }
+  };
+
+  // Validate device ID for MQTT topic usage
+  const validateDeviceId = (id: string) => {
+    if (!id) {
+      setDeviceIdError("Device ID is required");
+      return false;
+    }
+
+    if (!isValidDeviceId(id)) {
+      setDeviceIdError(
+        "Device ID can only contain letters, numbers, hyphens, and underscores",
+      );
+      return false;
+    }
+
+    setDeviceIdError(null);
+    return true;
+  };
 
   // Setup mutation
   const createDevice = api.device.create.useMutation({
@@ -87,6 +131,12 @@ export default function NewDevicePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validate device ID
+    if (!validateDeviceId(formData.deviceId)) {
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -111,6 +161,8 @@ export default function NewDevicePage() {
       ? profiles?.find((p) => p.id === formData.profileId)
       : null;
   const profileHasBroker = selectedProfile?.broker != null;
+  const showMqttPreview =
+    selectedProfile?.transport === "MQTT" && profileMqttTopics.length > 0;
 
   return (
     <div className="flex-1 space-y-6">
@@ -127,7 +179,7 @@ export default function NewDevicePage() {
         </div>
       </div>
 
-      <div className="grid max-w-3xl grid-cols-1 gap-6">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <form onSubmit={handleSubmit}>
           <Card>
             <CardHeader className="pb-4">
@@ -156,14 +208,22 @@ export default function NewDevicePage() {
                   id="deviceId"
                   placeholder="Enter unique device identifier"
                   value={formData.deviceId}
-                  onChange={(e) =>
+                  onChange={(e) => {
                     setFormData((prev) => ({
                       ...prev,
                       deviceId: e.target.value,
-                    }))
-                  }
+                    }));
+                    validateDeviceId(e.target.value);
+                  }}
                   required
+                  className={deviceIdError ? "border-red-500" : ""}
                 />
+                {deviceIdError && (
+                  <p className="text-sm text-red-500">{deviceIdError}</p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Use only letters, numbers, hyphens, and underscores
+                </p>
               </div>
 
               <div className="space-y-2">
@@ -231,7 +291,7 @@ export default function NewDevicePage() {
                 )}
               </div>
             </CardContent>
-            <CardFooter className="flex justify-between">
+            <CardFooter className="flex justify-end space-x-4">
               <Button
                 variant="outline"
                 onClick={() => router.push("/devices")}
@@ -239,7 +299,7 @@ export default function NewDevicePage() {
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
+              <Button type="submit" disabled={isSubmitting || !!deviceIdError}>
                 {isSubmitting ? (
                   "Creating..."
                 ) : (
@@ -253,28 +313,58 @@ export default function NewDevicePage() {
           </Card>
         </form>
 
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle className="text-base">Connection Details</CardTitle>
-            <CardDescription>
-              Use these details to configure your device
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4 text-sm">
-              <div className="grid grid-cols-2 items-center gap-2">
-                <div className="text-muted-foreground">Broker Address:</div>
-                <div className="font-mono">mqtt.zelene.local</div>
-                <div className="text-muted-foreground">Port:</div>
-                <div className="font-mono">1883</div>
-                <div className="text-muted-foreground">Username:</div>
-                <div className="font-mono">
-                  device_{formData.deviceId || "<device_id>"}
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Connection Details</CardTitle>
+              <CardDescription>
+                Use these details to configure your device
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4 text-sm">
+                <div className="grid grid-cols-2 items-center gap-2">
+                  <div className="text-muted-foreground">Broker Address:</div>
+                  <div className="font-mono">
+                    {formData.brokerId
+                      ? (brokers?.find((b) => b.id === formData.brokerId)
+                          ?.name ?? "mqtt.zelene.local")
+                      : "mqtt.zelene.local"}
+                  </div>
+                  <div className="text-muted-foreground">Port:</div>
+                  <div className="font-mono">1883</div>
+                  <div className="text-muted-foreground">Username:</div>
+                  <div className="font-mono">
+                    device_{formData.deviceId || "<device_id>"}
+                  </div>
                 </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+
+          {/* MQTT Topics Preview */}
+          {showMqttPreview && (
+            <MqttTopicDisplay
+              topics={profileMqttTopics}
+              deviceId={formData.deviceId || "your-device-id"}
+              title="Inherited MQTT Topics"
+              showDeviceIdInput={false}
+            />
+          )}
+
+          {selectedProfile?.transport === "MQTT" &&
+            profileMqttTopics.length === 0 && (
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>No MQTT topics configured</AlertTitle>
+                <AlertDescription>
+                  The selected profile does not have any MQTT topics configured.
+                  You may want to add topics to the profile before creating
+                  devices.
+                </AlertDescription>
+              </Alert>
+            )}
+        </div>
       </div>
     </div>
   );

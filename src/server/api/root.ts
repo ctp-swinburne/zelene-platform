@@ -1,6 +1,8 @@
+// src/server/api/root.ts
 import { deviceRouter } from "./routers/device/device";
 import { brokerRouter } from "./routers/brokers/broker";
 import { deviceProfileRouter } from "./routers/device/deviceProfile";
+import { mqttTopicRouter } from "./routers/mqtt/mqttTopic";
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 
 /**
@@ -12,6 +14,7 @@ export const appRouter = createTRPCRouter({
   device: deviceRouter,
   deviceProfile: deviceProfileRouter,
   broker: brokerRouter,
+  mqttTopic: mqttTopicRouter,
 });
 
 // export type definition of API

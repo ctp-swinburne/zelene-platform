@@ -88,15 +88,41 @@ model DeviceProfile {
     transport   TransportType @default(MQTT)
     isDefault   Boolean       @default(false)
     userId      String
-    brokerId    String? // New field to associate profiles with brokers
+    brokerId    String?
 
-    devices Device[]
-    user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-    broker  Broker?  @relation(fields: [brokerId], references: [id]) // New relation
+    // Relations
+    user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+    broker     Broker?     @relation(fields: [brokerId], references: [id])
+    devices    Device[]
+    mqttTopics MqttTopic[] // Relation to MQTT topics
 
     @@index([userId])
     @@index([userId, isDefault])
-    @@index([brokerId]) // New index
+    @@index([brokerId])
+}
+
+// New model for flexible MQTT topics
+model MqttTopic {
+    id           String        @id @default(cuid())
+    createdAt    DateTime      @default(now())
+    updatedAt    DateTime      @updatedAt
+    name         String // Human-readable name (e.g., "Device Status", "Temperature Readings")
+    description  String? // Optional description
+    topicPattern String // MQTT topic pattern with {deviceId} placeholder
+    direction    MqttDirection // Publish or Subscribe
+    qos          Int           @default(0) // MQTT QoS (0, 1, or 2)
+    retain       Boolean       @default(false) // MQTT retain flag
+    profileId    String // Reference to device profile
+
+    // Relations
+    profile DeviceProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+    @@index([profileId])
+}
+
+enum MqttDirection {
+    PUBLISH // Platform publishes to this topic (device subscribes)
+    SUBSCRIBE // Platform subscribes to this topic (device publishes)
 }
 
 enum DeviceStatus {
